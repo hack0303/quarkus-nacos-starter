@@ -9,12 +9,9 @@ import io.smallrye.config.ConfigSourceFactory;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
-import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,18 +102,24 @@ public class NacosConfigSource implements ConfigSource, ConfigSourceFactory {
 
   private void loadFromNacos() {
     try {
-      // ---- Resolve bootstrap config values ----
-      // MP Config (application.properties) overrides env vars.
-      // By the time loadFromNacos() is called (lazy, from getValue()),
-      // the config system is fully initialized — no circular dependency.
-      String serverAddr = resolve("nacos.config.server-addr", properties::serverAddr);
-      String namespace  = resolve("nacos.config.namespace",  properties::namespace);
-      String dataId     = resolve("nacos.config.data-id",    properties::dataId);
-      String group      = resolve("nacos.config.group",      properties::group);
-      String username   = resolve("nacos.config.username",    properties::username);
-      String password   = resolve("nacos.config.password",    properties::password);
-      long timeoutMs    = Long.parseLong(
-          resolve("nacos.config.timeout-ms", () -> String.valueOf(properties.timeoutMs())));
+      // ---- Bootstrap config: env vars / system props ONLY ----
+      // ⚠️  DANGER: Do NOT call ConfigProvider.getConfig() here!
+      //      NacosConfigSource IS a ConfigSource itself. Querying MP Config
+      //      from within loadFromNacos() creates a recursive call chain:
+      //      getValue() → ensureInitialized() → loadFromNacos()
+      //      → ConfigProvider.getConfig() → ... → getValue() ...
+      //      Even with the initialized guard, each property expression
+      //      resolution adds deep stack frames, causing stack overflow.
+      //
+      //      Bootstrap values (dataId, serverAddr, etc.) MUST be resolved
+      //      from env vars or system properties — NEVER from MP Config.
+      String serverAddr = properties.serverAddr();
+      String namespace  = properties.namespace();
+      String dataId     = properties.dataId();
+      String group      = properties.group();
+      String username   = properties.username();
+      String password   = properties.password();
+      long timeoutMs    = properties.timeoutMs();
 
       log.info(
           "Connecting to Nacos: serverAddr={}, namespace={}, dataId={}, group={}",
@@ -160,27 +163,6 @@ public class NacosConfigSource implements ConfigSource, ConfigSourceFactory {
     } catch (Exception e) {
       log.warn("Nacos config source init failed (fallback to local): {}", e.getMessage(), e);
       this.cachedProperties = Collections.emptyMap();
-    }
-  }
-
-  /**
-   * 解析单个 bootstrap 配置项。优先级：
-   * <ol>
-   *   <li>MicroProfile Config ({@code application.properties}) — {{@code mpConfigKey}}
-   *   <li>{@code NacosConfigProperties} 的环境变量回退
-   * </ol>
-   *
-   * <p>注意：此方法在 {@code ensureInitialized()} 中调用，此时 MP Config 已就绪，
-   * 不会出现 ConfigSourceFactory SPI 初始化期的循环依赖问题。
-   */
-  private static String resolve(String mpConfigKey, Supplier<String> envFallback) {
-    try {
-      return ConfigProvider.getConfig()
-          .getOptionalValue(mpConfigKey, String.class)
-          .filter(v -> !v.isBlank())
-          .orElseGet(envFallback);
-    } catch (Exception e) {
-      return envFallback.get();
     }
   }
 
