@@ -9,9 +9,12 @@ import io.smallrye.config.ConfigSourceFactory;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,43 +105,82 @@ public class NacosConfigSource implements ConfigSource, ConfigSourceFactory {
 
   private void loadFromNacos() {
     try {
+      // ---- Resolve bootstrap config values ----
+      // MP Config (application.properties) overrides env vars.
+      // By the time loadFromNacos() is called (lazy, from getValue()),
+      // the config system is fully initialized — no circular dependency.
+      String serverAddr = resolve("nacos.config.server-addr", properties::serverAddr);
+      String namespace  = resolve("nacos.config.namespace",  properties::namespace);
+      String dataId     = resolve("nacos.config.data-id",    properties::dataId);
+      String group      = resolve("nacos.config.group",      properties::group);
+      String username   = resolve("nacos.config.username",    properties::username);
+      String password   = resolve("nacos.config.password",    properties::password);
+      long timeoutMs    = Long.parseLong(
+          resolve("nacos.config.timeout-ms", () -> String.valueOf(properties.timeoutMs())));
+
+      log.info(
+          "Connecting to Nacos: serverAddr={}, namespace={}, dataId={}, group={}",
+          serverAddr, namespace, dataId, group);
+
+      // ---- Build Nacos client properties ----
       Properties nacosProps = new Properties();
-      nacosProps.setProperty("serverAddr", properties.serverAddr());
-      if (!properties.namespace().isBlank()) {
-        nacosProps.setProperty("namespace", properties.namespace());
+      nacosProps.setProperty("serverAddr", serverAddr);
+      if (!namespace.isBlank()) {
+        nacosProps.setProperty("namespace", namespace);
       }
-      if (!properties.username().isBlank()) {
-        nacosProps.setProperty("username", properties.username());
+      if (!username.isBlank()) {
+        nacosProps.setProperty("username", username);
       }
-      if (!properties.password().isBlank()) {
-        nacosProps.setProperty("password", properties.password());
+      if (!password.isBlank()) {
+        nacosProps.setProperty("password", password);
       }
 
+      // ---- Fetch config from Nacos ----
       this.configService = NacosFactory.createConfigService(nacosProps);
-      String configContent =
-          configService.getConfig(properties.dataId(), properties.group(), properties.timeoutMs());
+      String configContent = configService.getConfig(dataId, group, timeoutMs);
 
       if (configContent != null && !configContent.isBlank()) {
         Map<String, String> parsed = parseProperties(configContent);
         log.info(
             "Nacos config loaded: dataId={}, group={}, properties={}",
-            properties.dataId(), properties.group(), parsed.size());
+            dataId, group, parsed.size());
         this.cachedProperties = parsed;
-        registerListener();
+        registerListener(dataId, group);
       } else {
         log.warn(
             "Nacos config empty: dataId={}, group={} — using local config",
-            properties.dataId(), properties.group());
+            dataId, group);
         this.cachedProperties = Collections.emptyMap();
       }
     } catch (NacosException e) {
       log.warn(
-          "Nacos config fetch failed (fallback to local): server={}, dataId={}, err={}",
-          properties.serverAddr(), properties.dataId(), e.getMessage());
+          "Nacos config fetch failed (fallback to local): server={}, err={}",
+          properties.serverAddr(), e.getMessage());
       this.cachedProperties = Collections.emptyMap();
     } catch (Exception e) {
       log.warn("Nacos config source init failed (fallback to local): {}", e.getMessage(), e);
       this.cachedProperties = Collections.emptyMap();
+    }
+  }
+
+  /**
+   * 解析单个 bootstrap 配置项。优先级：
+   * <ol>
+   *   <li>MicroProfile Config ({@code application.properties}) — {{@code mpConfigKey}}
+   *   <li>{@code NacosConfigProperties} 的环境变量回退
+   * </ol>
+   *
+   * <p>注意：此方法在 {@code ensureInitialized()} 中调用，此时 MP Config 已就绪，
+   * 不会出现 ConfigSourceFactory SPI 初始化期的循环依赖问题。
+   */
+  private static String resolve(String mpConfigKey, Supplier<String> envFallback) {
+    try {
+      return ConfigProvider.getConfig()
+          .getOptionalValue(mpConfigKey, String.class)
+          .filter(v -> !v.isBlank())
+          .orElseGet(envFallback);
+    } catch (Exception e) {
+      return envFallback.get();
     }
   }
 
@@ -148,13 +190,12 @@ public class NacosConfigSource implements ConfigSource, ConfigSourceFactory {
    * <p>当 Nacos 远端配置变更时自动更新缓存。业务组件如需感知变化应主动调用
    * {@link #getValue(String)} 或实现自己的监听回调。
    */
-  private void registerListener() {
+  private void registerListener(String dataId, String group) {
     try {
-      configService.addListener(properties.dataId(), properties.group(), new AbstractListener() {
+      configService.addListener(dataId, group, new AbstractListener() {
         @Override
         public void receiveConfigInfo(String configInfo) {
-          log.info("Nacos config changed, reloading: dataId={}, group={}",
-              properties.dataId(), properties.group());
+          log.info("Nacos config changed, reloading: dataId={}, group={}", dataId, group);
           if (configInfo != null && !configInfo.isBlank()) {
             cachedProperties = parseProperties(configInfo);
           } else {
