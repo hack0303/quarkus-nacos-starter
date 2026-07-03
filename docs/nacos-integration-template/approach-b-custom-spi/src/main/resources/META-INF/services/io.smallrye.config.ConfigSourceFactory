@@ -1,0 +1,5 @@
+# Nacos Config Source SPI registration
+# This file enables Quarkus to discover the custom NacosConfigSource
+# during application startup. Without this file, the ConfigSourceFactory
+# will not be loaded.
+org.cland.chainpay.{service}.infrastructure.nacos.NacosConfigSource
