@@ -1,4 +1,4 @@
-package org.cland.chainpay.nacos.starter;
+package org.cland.nacos.starter;
 
 import java.util.Optional;
 import org.eclipse.microprofile.config.ConfigProvider;

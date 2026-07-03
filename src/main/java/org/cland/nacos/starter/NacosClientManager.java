@@ -1,4 +1,4 @@
-package org.cland.chainpay.nacos.starter;
+package org.cland.nacos.starter;
 
 import com.alibaba.nacos.api.NacosFactory;
 import com.alibaba.nacos.api.exception.NacosException;

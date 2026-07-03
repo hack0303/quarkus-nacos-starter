@@ -19,7 +19,7 @@
 
 ```xml
 <dependency>
-    <groupId>org.cland.chainpay</groupId>
+    <groupId>org.cland</groupId>
     <artifactId>quarkus-nacos-starter</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 </dependency>
@@ -54,7 +54,7 @@ nacos.discovery.port=${NACOS_DISCOVERY_PORT:8080}
 In `application.properties`, add the starter's package to `quarkus.arc.unremovable-packages`:
 
 ```properties
-quarkus.arc.unremovable-packages=org.cland.chainpay.nacos.starter
+quarkus.arc.unremovable-packages=org.cland.nacos.starter
 ```
 
 ### 4. Use NacosServiceDiscovery in Your Code

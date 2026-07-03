@@ -72,7 +72,7 @@ Authentication uses the built-in `GITHUB_TOKEN` — no secrets to configure.
 
 <dependencies>
     <dependency>
-        <groupId>org.cland.chainpay</groupId>
+        <groupId>org.cland</groupId>
         <artifactId>quarkus-nacos-starter</artifactId>
         <version>1.0.0</version>
     </dependency>
