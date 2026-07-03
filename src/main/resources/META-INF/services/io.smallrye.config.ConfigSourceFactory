@@ -1,0 +1,3 @@
+# Nacos ConfigSource SPI — auto-discovered by SmallRye Config
+# Enables NacosConfigSource to inject remote config into Quarkus
+org.cland.chainpay.nacos.starter.NacosConfigSource

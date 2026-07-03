@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.cland.chainpay</groupId>
+    <artifactId>quarkus-nacos-starter</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>Quarkus Nacos Starter</name>
+    <description>
+        Auto-configuring Nacos integration for ChainPay Quarkus microservices.
+        Provides: custom ConfigSource SPI (ordinal=250) for remote config,
+        NamingService lifecycle management, service registration/discovery,
+        and readiness health check. Drop-in dependency — add to pom.xml and
+        configure nacos.* properties in application.properties.
+    </description>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <nacos-client.version>2.4.3</nacos-client.version>
+        <quarkus.version>3.33.1</quarkus.version>
+        <smallrye-config.version>3.10.0</smallrye-config.version>
+        <slf4j.version>2.0.13</slf4j.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-bom</artifactId>
+                <version>${quarkus.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- ============================================================ -->
+        <!-- Compile dependencies (packaged in the starter JAR)           -->
+        <!-- ============================================================ -->
+
+        <!-- Nacos Client SDK — config service + naming service -->
+        <dependency>
+            <groupId>com.alibaba.nacos</groupId>
+            <artifactId>nacos-client</artifactId>
+            <version>${nacos-client.version}</version>
+        </dependency>
+
+        <!-- SLF4J API — logging facade -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+
+        <!-- ============================================================ -->
+        <!-- Provided dependencies (expected from the consuming service)  -->
+        <!-- ============================================================ -->
+
+        <!-- Quarkus Arc — CDI container (@Singleton, @ApplicationScoped) -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-arc</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Quarkus Core — @Startup, runtime lifecycle -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-core</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- SmallRye Config — ConfigSource / ConfigSourceFactory SPI -->
+        <dependency>
+            <groupId>io.smallrye.config</groupId>
+            <artifactId>smallrye-config-core</artifactId>
+            <version>${smallrye-config.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- MicroProfile Config API — @ConfigProperty -->
+        <dependency>
+            <groupId>org.eclipse.microprofile.config</groupId>
+            <artifactId>microprofile-config-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- MicroProfile Health — @Readiness, HealthCheck -->
+        <dependency>
+            <groupId>org.eclipse.microprofile.health</groupId>
+            <artifactId>microprofile-health-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Automatic-Module-Name>
+                                org.cland.chainpay.nacos.starter
+                            </Automatic-Module-Name>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <phase>verify</phase>
+                        <goals><goal>jar-no-fork</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
