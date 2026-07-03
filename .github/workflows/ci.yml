@@ -45,13 +45,13 @@ jobs:
           cache: maven
 
       - name: Validate (compile + checkstyle)
-        run: mvn validate compile --no-transfer-progress
+        run: mvn validate compile --no-transfer-progress -Dmaven.wagon.http.retryHandler.count=3
 
       - name: Test
-        run: mvn test --no-transfer-progress
+        run: mvn test --no-transfer-progress -Dmaven.wagon.http.retryHandler.count=3
 
       - name: Package
-        run: mvn package -DskipTests --no-transfer-progress
+        run: mvn package -DskipTests --no-transfer-progress -Dmaven.wagon.http.retryHandler.count=3
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
@@ -111,7 +111,7 @@ jobs:
           server-password: MAVEN_PASSWORD
 
       - name: Publish to GitHub Packages
-        run: mvn deploy -DskipTests --no-transfer-progress
+        run: mvn deploy -DskipTests --no-transfer-progress -Dmaven.wagon.http.retryHandler.count=3
         env:
           MAVEN_USERNAME: ${{ github.actor }}
           MAVEN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
