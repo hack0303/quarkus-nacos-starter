@@ -1,16 +1,15 @@
 package org.cland.nacos.starter;
 
 import java.util.Optional;
-import org.eclipse.microprofile.config.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Nacos 配置属性 POJO —— 从环境变量 / MP Config / 系统属性读取连接参数。
+ * Nacos 配置属性 POJO —— 从环境变量 / 系统属性读取连接参数。
  *
- * <p>纯 POJO，无框架注解。可安全地在任何层引用。
+ * <p>纯 POJO，无框架注解。不依赖 MicroProfile Config（避免 ConfigSource SPI 初始化期间的循环依赖）。
  *
- * <p>读取优先级：<b>环境变量 &gt; MP Config ({@code application.properties}) &gt; 系统属性 (-D) &gt; 硬编码默认值</b>。
+ * <p>读取优先级：<b>环境变量 &gt; 系统属性 (-D) &gt; 硬编码默认值</b>。
  *
  * <p>所有配置键及对应环境变量：
  *
@@ -42,13 +41,13 @@ public class NacosConfigProperties {
   private final long timeoutMs;
 
   public NacosConfigProperties() {
-    this.serverAddr = env("NACOS_SERVERADDR", "nacos.config.server-addr", "192.168.1.11:8848");
-    this.namespace = env("NACOS_NAMESPACE", "nacos.config.namespace", "f00bead4-47a4-491a-a5e2-66d79f82d8a4");
-    this.dataId = env("NACOS_DATAID", "nacos.config.data-id", resolveDefaultDataId());
-    this.group = env("NACOS_GROUP", "nacos.config.group", "DEFAULT_GROUP");
-    this.username = env("NACOS_USERNAME", "nacos.config.username", "chainpay");
-    this.password = env("NACOS_PASSWORD", "nacos.config.password", "chainpay123");
-    this.timeoutMs = Long.parseLong(env("NACOS_TIMEOUT_MS", "nacos.config.timeout-ms", "5000"));
+    this.serverAddr = env("NACOS_SERVERADDR", "192.168.1.11:8848");
+    this.namespace = env("NACOS_NAMESPACE", "f00bead4-47a4-491a-a5e2-66d79f82d8a4");
+    this.dataId = resolveDataId();
+    this.group = env("NACOS_GROUP", "DEFAULT_GROUP");
+    this.username = env("NACOS_USERNAME", "chainpay");
+    this.password = env("NACOS_PASSWORD", "chainpay123");
+    this.timeoutMs = Long.parseLong(env("NACOS_TIMEOUT_MS", "5000"));
     log.info(
         "NacosConfigProperties: serverAddr={}, namespace={}, dataId={}, group={}",
         serverAddr, namespace, dataId, group);
@@ -66,38 +65,26 @@ public class NacosConfigProperties {
 
   // ---- Internal ----
 
-  /** 尝试从 {@code quarkus.application.name} 推断默认 dataId。 */
-  private static String resolveDefaultDataId() {
-    String name = System.getProperty("quarkus.application.name");
-    if (name != null && !name.isBlank()) return name;
-    // 环境变量兜底
-    name = System.getenv("QUARKUS_APPLICATION_NAME");
-    if (name != null && !name.isBlank()) return name;
+  /**
+   * 解析 dataId：优先环境变量，其次系统属性，最后硬编码默认值。
+   *
+   * <p>系统属性 {@code nacos.config.data-id} 可透传 {@code application.properties} 中的默认值
+   * （通过 Quarkus 构建时注入 {@code -Dnacos.config.data-id=...} 或 {@code .env} 文件）。
+   */
+  private static String resolveDataId() {
+    // 1. 环境变量 NACOS_DATAID
+    String value = System.getenv("NACOS_DATAID");
+    if (value != null && !value.isBlank()) return value;
+    // 2. 系统属性 nacos.config.data-id（可来源于 Quarkus 的 application.properties 构建时处理）
+    value = System.getProperty("nacos.config.data-id");
+    if (value != null && !value.isBlank()) return value;
+    // 3. 硬编码默认值
+    log.warn("NACOS_DATAID not set via env var or -Dnacos.config.data-id — using fallback 'cland-chainpay-app'");
     return "cland-chainpay-app";
   }
 
-  /**
-   * 按优先级读取配置值：<br>
-   * 1. 环境变量 (envKey)<br>
-   * 2. MP Config / application.properties (mpConfigKey)<br>
-   * 3. JVM 系统属性 -D (envKey)<br>
-   * 4. 硬编码默认值
-   */
-  private static String env(String envKey, String mpConfigKey, String defaultValue) {
-    // 1. 环境变量（最高优先级）
-    String value = System.getenv(envKey);
-    if (value != null && !value.isBlank()) return value;
-    // 2. MicroProfile Config（读取 application.properties 中配置的默认值）
-    try {
-      value = ConfigProvider.getConfig().getOptionalValue(mpConfigKey, String.class).orElse(null);
-      if (value != null && !value.isBlank()) return value;
-    } catch (Exception ignored) {
-      // MP Config 尚未就绪（ConfigSource SPI 初始化早期）
-    }
-    // 3. JVM 系统属性
-    value = System.getProperty(envKey);
-    if (value != null && !value.isBlank()) return value;
-    // 4. 默认值
-    return defaultValue;
+  private static String env(String key, String defaultValue) {
+    return Optional.ofNullable(System.getenv(key))
+        .orElseGet(() -> System.getProperty(key, defaultValue));
   }
 }
