@@ -1,7 +1,7 @@
 # Quarkus Nacos Starter
 
 > Drop-in Nacos integration for ChainPay Quarkus microservices.
-> Custom ConfigSource SPI (ordinal=250) + native nacos-client SDK.
+> Custom ConfigSource SPI (ordinal=280) + native nacos-client SDK.
 
 ## What It Provides
 

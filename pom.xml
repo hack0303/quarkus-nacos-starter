@@ -13,7 +13,7 @@
     <name>Quarkus Nacos Starter</name>
     <description>
         Auto-configuring Nacos integration for ChainPay Quarkus microservices.
-        Provides: custom ConfigSource SPI (ordinal=250) for remote config,
+        Provides: custom ConfigSource SPI (ordinal=280) for remote config,
         NamingService lifecycle management, service registration/discovery,
         and readiness health check. Drop-in dependency — add to pom.xml and
         configure nacos.* properties in application.properties.

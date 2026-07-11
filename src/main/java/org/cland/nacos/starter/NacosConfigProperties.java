@@ -32,6 +32,8 @@ public class NacosConfigProperties {
 
   private static final Logger log = LoggerFactory.getLogger(NacosConfigProperties.class);
 
+  private static final String DEFAULT_DATA_ID = "cland-app";
+
   private final String serverAddr;
   private final String namespace;
   private final String dataId;
@@ -67,20 +69,15 @@ public class NacosConfigProperties {
 
   /**
    * 解析 dataId：优先环境变量，其次系统属性，最后硬编码默认值。
-   *
-   * <p>系统属性 {@code nacos.config.data-id} 可透传 {@code application.properties} 中的默认值
-   * （通过 Quarkus 构建时注入 {@code -Dnacos.config.data-id=...} 或 {@code .env} 文件）。
    */
   private static String resolveDataId() {
-    // 1. 环境变量 NACOS_DATAID
     String value = System.getenv("NACOS_DATAID");
     if (value != null && !value.isBlank()) return value;
-    // 2. 系统属性 nacos.config.data-id（可来源于 Quarkus 的 application.properties 构建时处理）
     value = System.getProperty("nacos.config.data-id");
     if (value != null && !value.isBlank()) return value;
-    // 3. 硬编码默认值
-    log.warn("NACOS_DATAID not set via env var or -Dnacos.config.data-id — using fallback 'cland-chainpay-app'");
-    return "cland-chainpay-app";
+    log.warn("NACOS_DATAID not set — using fallback '{}'", DEFAULT_DATA_ID);
+    log.warn("  Set NACOS_DATAID env var or create .env file in project root");
+    return DEFAULT_DATA_ID;
   }
 
   private static String env(String key, String defaultValue) {

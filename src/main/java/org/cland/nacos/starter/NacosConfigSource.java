@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
  *
  * <ul>
  *   <li><b>启动不阻塞</b> — Nacos 不可用时自动降级到本地 {@code application.properties}
- *   <li><b>优先级 ordinal=250</b> — 高于本地配置文件 (100/110)，低于环境变量 (300/400)
+ *   <li><b>优先级 ordinal=280</b> — 高于本地配置文件 (250)，低于环境变量 (300)
  *   <li><b>懒加载</b> — 首次查询配置时才发起远程调用
  *   <li><b>动态刷新</b> — 注册 Nacos Listener，配置变更时自动更新缓存
  * </ul>
@@ -38,7 +38,9 @@ public class NacosConfigSource implements ConfigSource, ConfigSourceFactory {
   static final String NAME = "NacosConfigSource";
 
   private final NacosConfigProperties properties;
-  private volatile Map<String, String> cachedProperties;
+  // Initialize as empty map to prevent NPE when getValue() is called
+  // during recursive config lookup inside loadFromNacos().
+  private volatile Map<String, String> cachedProperties = Collections.emptyMap();
   private final AtomicBoolean initialized = new AtomicBoolean(false);
   private ConfigService configService;
 
@@ -77,12 +79,13 @@ public class NacosConfigSource implements ConfigSource, ConfigSourceFactory {
   }
 
   /**
-   * ordinal=250：介于 application.properties (100/110) 和环境变量 (300/400) 之间。
-   * 确保 Nacos 配置可覆盖本地配置，但环境变量具有最高优先级。
+   * ordinal=280：介于 application.properties (250) 和环境变量 (300) 之间。
+   * 优先级：系统属性(400) > 环境变量(300) > Nacos远端(280) > 本地yml(250)
+   * 确保 Nacos 配置稳定覆盖本地配置，同时环境变量拥有最高优先级，可临时覆盖Nacos参数。
    */
   @Override
   public int getOrdinal() {
-    return 250;
+    return 280;
   }
 
   // ========================================================================
@@ -103,16 +106,13 @@ public class NacosConfigSource implements ConfigSource, ConfigSourceFactory {
   private void loadFromNacos() {
     try {
       // ---- Bootstrap config: env vars / system props ONLY ----
-      // ⚠️  DANGER: Do NOT call ConfigProvider.getConfig() here!
-      //      NacosConfigSource IS a ConfigSource itself. Querying MP Config
-      //      from within loadFromNacos() creates a recursive call chain:
-      //      getValue() → ensureInitialized() → loadFromNacos()
-      //      → ConfigProvider.getConfig() → ... → getValue() ...
-      //      Even with the initialized guard, each property expression
-      //      resolution adds deep stack frames, causing stack overflow.
+      // ⚠️  NEVER call ConfigProvider.getConfig() here — NacosConfigSource
+      //      IS a ConfigSource, causing recursive expression resolution
+      //      that leads to stack overflow (ReservedStackAccess warning).
       //
-      //      Bootstrap values (dataId, serverAddr, etc.) MUST be resolved
-      //      from env vars or system properties — NEVER from MP Config.
+      //      Bootstrap values must be set via env vars (NACOS_SERVERADDR,
+      //      NACOS_DATAID, etc.) or their corresponding system properties.
+      //
       String serverAddr = properties.serverAddr();
       String namespace  = properties.namespace();
       String dataId     = properties.dataId();

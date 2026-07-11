@@ -5,6 +5,8 @@ import com.alibaba.nacos.api.naming.pojo.Instance;
 import io.quarkus.runtime.Shutdown;
 import io.quarkus.runtime.Startup;
 import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -44,7 +46,18 @@ public class NacosServiceRegistry {
   private final String serviceGroup;
   private final String clusterName;
   private final String host;
-  private final int port;
+
+  /**
+   * Lazy port — resolved via {@code Provider.get()} at registration time,
+   * by which point {@link NacosConfigSource} has loaded remote config.
+   *
+   * <p>Using {@link Provider} (not direct {@code @ConfigProperty}) defers
+   * resolution to {@link #init()}, avoiding the stale value from
+   * {@code application.properties} (8080) before Nacos is loaded.
+   */
+  @Inject
+  @ConfigProperty(name = "quarkus.http.port", defaultValue = "8080")
+  Provider<Integer> port;
 
   public NacosServiceRegistry(
       NacosClientManager clientManager,
@@ -63,14 +76,12 @@ public class NacosServiceRegistry {
       @ConfigProperty(
               name = "nacos.discovery.ip",
               defaultValue = "auto")
-          String discoveryIp,
-      @ConfigProperty(name = "quarkus.http.port", defaultValue = "8080") int port) {
+          String discoveryIp) {
     this.clientManager = clientManager;
     this.serviceName = serviceName;
     this.serviceGroup = serviceGroup;
     this.clusterName = clusterName;
     this.host = resolveHost(discoveryIp);
-    this.port = port;
   }
 
   @PostConstruct
@@ -80,9 +91,14 @@ public class NacosServiceRegistry {
       return;
     }
     try {
+      // Lazy-resolve port at registration time.
+      // By now NacosConfigSource has loaded remote config,
+      // so quarkus.http.port from Nacos (8103) overrides the default (8080).
+      int actualPort = port.get();
+
       Instance instance = new Instance();
       instance.setIp(this.host);
-      instance.setPort(this.port);
+      instance.setPort(actualPort);
       instance.setClusterName(clusterName);
       instance.setWeight(1.0);
       instance.setEphemeral(true);
@@ -93,7 +109,7 @@ public class NacosServiceRegistry {
 
       log.info(
           "Nacos service registered: {} -> {}:{} [group={}, cluster={}]",
-          serviceName, this.host, this.port, serviceGroup, clusterName);
+          serviceName, this.host, actualPort, serviceGroup, clusterName);
     } catch (NacosException e) {
       log.error("Nacos service registration failed (non-fatal): {}", e.getMessage());
     }
@@ -108,8 +124,8 @@ public class NacosServiceRegistry {
     try {
       clientManager
           .getNamingService()
-          .deregisterInstance(serviceName, serviceGroup, host, port, clusterName);
-      log.info("Nacos service deregistered: {} -> {}:{}", serviceName, host, port);
+          .deregisterInstance(serviceName, serviceGroup, host, port.get(), clusterName);
+      log.info("Nacos service deregistered: {} -> {}:{}", serviceName, host, port.get());
     } catch (NacosException e) {
       log.warn("Nacos service deregistration failed: {}", e.getMessage());
     }

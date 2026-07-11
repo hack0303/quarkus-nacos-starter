@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<settings
+    xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd"
+>
+
+    <localRepository>D:/.m2/repository</localRepository>
+    <offline>false</offline>
+
+    <!-- 镜像配置：仅加速非Quarkus的公共依赖 -->
+    <mirrors>
+        <mirror>
+            <id>aliyunmaven-central</id>
+            <mirrorOf
+            >central</mirrorOf> <!-- 仅镜像默认central，不影响手动配置的官方源 -->
+            <name>Aliyun Central Maven Mirror</name>
+            <url>https://maven.aliyun.com/repository/central</url>
+        </mirror>
+        <mirror>
+            <id>huaweicloud-central</id>
+            <mirrorOf>central</mirrorOf>
+            <name>Huawei Cloud Central Maven Mirror</name>
+            <url>https://repo.huaweicloud.com/repository/maven/</url>
+        </mirror>
+    </mirrors>
+
+    <!-- 服务器认证（复用） -->
+    <servers>
+        <server>
+            <id>github-todocantobe-cland-share</id>
+            <username>hack0303</username>
+            <password>${env.GITHUB_PAT}</password>
+        </server>
+        <server>
+            <id>github-hack0303-spring-boot-starter-parent</id>
+            <username>hack0303</username>
+            <password>${env.GITHUB_PAT}</password>
+        </server>
+    </servers>
+
+    <profiles>
+        <profile>
+            <id>default</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+
+            <repositories>
+                <!-- 1. GitHub私有仓库（优先） -->
+                <repository>
+                    <id>github-todocantobe-cland-share</id>
+                    <url
+                    >https://maven.pkg.github.com/todocantobe/cland-share</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>false</enabled></snapshots>
+                </repository>
+                <repository>
+                    <id>github-hack0303-spring-boot-starter-parent</id>
+                    <url
+                    >https://maven.pkg.github.com/hack0303/spring-boot-starter-parent</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>false</enabled></snapshots>
+                </repository>
+
+                <!-- 2. Maven官方中央仓库（核心：直接访问，绕开阿里云，下载Quarkus 3.32.0） -->
+                <repository>
+                    <id>maven-central-official</id>
+                    <name>Maven Central Official</name>
+                    <url>https://repo1.maven.org/maven2/</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>false</enabled></snapshots>
+                </repository>
+
+                <!-- 3. Red Hat官方仓库（兜底：若中央仓库访问失败） -->
+                <repository>
+                    <id>redhat-ga</id>
+                    <name>Red Hat GA Repository</name>
+                    <url>https://maven.repository.redhat.com/ga/</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>false</enabled></snapshots>
+                </repository>
+
+                <!-- 4. 阿里云central（兜底其他依赖） -->
+                <repository>
+                    <id>aliyunmaven-central</id>
+                    <url>https://maven.aliyun.com/repository/central</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>false</enabled></snapshots>
+                </repository>
+            </repositories>
+
+            <!-- 插件仓库：同步配置，确保Quarkus插件走官方源 -->
+            <pluginRepositories>
+                <pluginRepository>
+                    <id>maven-central-official</id>
+                    <url>https://repo1.maven.org/maven2/</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>false</enabled></snapshots>
+                </pluginRepository>
+                <pluginRepository>
+                    <id>redhat-ga</id>
+                    <url>https://maven.repository.redhat.com/ga/</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>false</enabled></snapshots>
+                </pluginRepository>
+                <pluginRepository>
+                    <id>aliyunmaven-central</id>
+                    <url>https://maven.aliyun.com/repository/central</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>false</enabled></snapshots>
+                </pluginRepository>
+            </pluginRepositories>
+        </profile>
+    </profiles>
+
+    <activeProfiles>
+        <activeProfile>default</activeProfile>
+    </activeProfiles>
+</settings>

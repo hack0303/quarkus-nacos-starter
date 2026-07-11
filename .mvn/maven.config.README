@@ -1,0 +1,29 @@
+# ===================== Maven 构建参数优化配置 =====================
+# 使用说明：将以下参数添加到 mvn 命令后，例如：mvn clean package [下面的参数]
+
+# 【可选】指定自定义 settings.xml 路径（默认路径：~/.m2/settings.xml 或 conf/settings.xml）
+# -s "D:/.m2/settings.xml"           # 自定义settings.xml路径（路径含空格时需加引号）
+
+# 【必选】基础环境配置
+-Dfile.encoding=UTF-8                # 统一项目编码为UTF-8，避免中文乱码
+-T 4C                                # 并行编译（4C表示4核，也可简写为-T 4，根据CPU核心数调整）
+-Dmaven.artifact.threads=10          # 依赖下载并行线程数（加速依赖下载，建议5-10）
+
+# 【构建优化】减少构建耗时/避免失败
+-q                                   # 静默模式（仅输出错误信息，精简日志）
+-U                                   # 强制更新快照依赖（确保使用最新的SNAPSHOT版本）
+-DskipTests                          # 跳过单元测试执行（但仍编译测试代码）
+-Dmaven.test.skip=true               # 彻底跳过测试（包括测试代码编译，打包时推荐）
+-Dmaven.javadoc.skip=true            # 跳过生成Javadoc（避免编码/语法问题导致构建失败）
+-DskipChecksums=true                 # 跳过依赖校验和检查（进一步加速构建）
+
+# 【Java版本】指定源码/字节码版本（根据项目实际JDK版本调整，示例为JDK21）
+-Dmaven.compiler.source=21           # 指定Java源码版本（如JDK8写8，JDK17写17）
+-Dmaven.compiler.target=21           # 指定编译后的字节码版本（需与source一致）
+
+# 【调试/特殊场景】（日常构建无需开启，排查问题时使用）
+# -e                                 # 出错时输出完整堆栈信息（调试构建失败）
+# -X                                 # 调试模式（输出所有日志，详细排查问题）
+# -o                                 # 离线模式（仅使用本地仓库，无网络时用）
+# -P prod                            # 指定激活的Profile（如生产环境配置，需项目有对应Profile）
+# -Dmaven.repo.local="D:/.m2/repository"  # 自定义本地仓库路径（路径含空格时加引号）
