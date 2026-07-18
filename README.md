@@ -28,6 +28,10 @@
 ### 2. Configure `application.properties`
 
 ```properties
+# ===== Nacos Master Switch =====
+# Set to false to disable all Nacos integration (useful for CI/CD or local dev)
+nacos.config.enabled=${NACOS_ENABLED:true}
+
 # ===== Nacos Config Center (custom SPI) =====
 nacos.config.server-addr=${NACOS_SERVERADDR:192.168.1.11:8848}
 nacos.config.namespace=${NACOS_NAMESPACE:f00bead4-...}
@@ -81,10 +85,33 @@ cd quarkus-nacos-starter
 mvn clean install -DskipTests
 ```
 
+## Enable / Disable
+
+Set `NACOS_ENABLED=false` (or `nacos.config.enabled=false` in `application.properties`) to **disable all Nacos integration**:
+
+| Effect | Component |
+|--------|----------|
+| ❌ No remote config fetched from Nacos | `NacosConfigSource` (SPI) |
+| ❌ No Nacos naming client created | `NacosClientManager` |
+| ❌ No service registration | `NacosServiceRegistry` |
+| ❌ No service discovery (returns empty) | `NacosServiceDiscovery` |
+| ✅ Health check reports `UP` with status `disabled` | `NacosHealthCheck` |
+
+All 5 components check `nacos.config.enabled` explicitly — not relying solely on
+`NacosClientManager.isInitialized()` cascading. This ensures clean, early-exit semantics
+and clear log messages at each layer.
+
+This is useful for **local development** or **CI/CD builds** where Nacos is unavailable.
+
+> **Note for CI/CD**: Set `NACOS_ENABLED=false` as an environment variable in your build
+> pipeline to prevent build-time Nacos connections (e.g., during `mvn package -Dnative`
+> in Jenkins/GitHub Actions).
+
 ## Environment Variable Reference
 
 | Variable | Default | Used By |
 |----------|---------|---------|
+| `NACOS_ENABLED` | `true` | Master switch (set `false` to disable all Nacos) |
 | `NACOS_SERVERADDR` | `192.168.1.11:8848` | Config + Discovery |
 | `NACOS_NAMESPACE` | `f00bead4-...` | Config + Discovery |
 | `NACOS_DATAID` | `cland-chainpay-app` | Config source |

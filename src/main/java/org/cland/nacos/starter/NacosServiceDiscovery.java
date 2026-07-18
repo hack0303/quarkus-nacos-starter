@@ -27,14 +27,18 @@ public class NacosServiceDiscovery {
 
   private static final Logger log = LoggerFactory.getLogger(NacosServiceDiscovery.class);
 
+  private final boolean nacosEnabled;
   private final NacosClientManager clientManager;
   private final String defaultGroup;
   private final Random random = new Random();
 
   public NacosServiceDiscovery(
+      @ConfigProperty(name = "nacos.config.enabled", defaultValue = "true")
+          boolean nacosEnabled,
       NacosClientManager clientManager,
       @ConfigProperty(name = "nacos.discovery.service-group", defaultValue = "DEFAULT_GROUP")
           String defaultGroup) {
+    this.nacosEnabled = nacosEnabled;
     this.clientManager = clientManager;
     this.defaultGroup = defaultGroup;
   }
@@ -57,6 +61,10 @@ public class NacosServiceDiscovery {
    * @return 健康的实例，若无可用实例则返回 {@code null}
    */
   public Instance getOneHealthyInstance(String serviceName, String groupName) {
+    if (!nacosEnabled) {
+      log.debug("Nacos DISABLED, cannot query instance: service={}", serviceName);
+      return null;
+    }
     if (!clientManager.isInitialized()) {
       log.warn("Nacos unavailable, cannot query instance: service={}", serviceName);
       return null;
@@ -93,6 +101,10 @@ public class NacosServiceDiscovery {
    * @return 健康实例列表，不会返回 {@code null}
    */
   public List<Instance> getAllHealthyInstances(String serviceName, String groupName) {
+    if (!nacosEnabled) {
+      log.debug("Nacos DISABLED, cannot list instances: service={}", serviceName);
+      return List.of();
+    }
     if (!clientManager.isInitialized()) {
       log.warn("Nacos unavailable, cannot list instances: service={}", serviceName);
       return List.of();

@@ -41,6 +41,7 @@ public class NacosServiceRegistry {
 
   private static final Logger log = LoggerFactory.getLogger(NacosServiceRegistry.class);
 
+  private final boolean nacosEnabled;
   private final NacosClientManager clientManager;
   private final String serviceName;
   private final String serviceGroup;
@@ -60,6 +61,8 @@ public class NacosServiceRegistry {
   Provider<Integer> port;
 
   public NacosServiceRegistry(
+      @ConfigProperty(name = "nacos.config.enabled", defaultValue = "true")
+          boolean nacosEnabled,
       NacosClientManager clientManager,
       @ConfigProperty(
               name = "nacos.discovery.service-name",
@@ -77,6 +80,7 @@ public class NacosServiceRegistry {
               name = "nacos.discovery.ip",
               defaultValue = "auto")
           String discoveryIp) {
+    this.nacosEnabled = nacosEnabled;
     this.clientManager = clientManager;
     this.serviceName = serviceName;
     this.serviceGroup = serviceGroup;
@@ -86,6 +90,10 @@ public class NacosServiceRegistry {
 
   @PostConstruct
   void init() {
+    if (!nacosEnabled) {
+      log.info("Nacos DISABLED, skipping service registration: service={}", serviceName);
+      return;
+    }
     if (!clientManager.isInitialized() || clientManager.getNamingService() == null) {
       log.warn("Nacos unavailable, skipping service registration: service={}", serviceName);
       return;
@@ -118,6 +126,9 @@ public class NacosServiceRegistry {
   /** 应用关闭时主动注销实例，避免 Nacos 残留脏数据。 */
   @Shutdown
   void destroy() {
+    if (!nacosEnabled) {
+      return;
+    }
     if (!clientManager.isInitialized() || clientManager.getNamingService() == null) {
       return;
     }

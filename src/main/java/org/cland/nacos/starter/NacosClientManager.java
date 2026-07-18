@@ -29,6 +29,7 @@ public class NacosClientManager {
 
   private static final Logger log = LoggerFactory.getLogger(NacosClientManager.class);
 
+  private final boolean nacosEnabled;
   private final String serverAddr;
   private final String namespace;
   private final String username;
@@ -37,11 +38,14 @@ public class NacosClientManager {
   private volatile boolean initialized;
 
   public NacosClientManager(
+      @ConfigProperty(name = "nacos.config.enabled", defaultValue = "true")
+          boolean nacosEnabled,
       @ConfigProperty(name = "nacos.server-addr", defaultValue = "192.168.1.11:8848")
           String serverAddr,
       @ConfigProperty(name = "nacos.namespace", defaultValue = "") String namespace,
       @ConfigProperty(name = "nacos.username", defaultValue = "") String username,
       @ConfigProperty(name = "nacos.password", defaultValue = "") String password) {
+    this.nacosEnabled = nacosEnabled;
     this.serverAddr = serverAddr;
     this.namespace = namespace;
     this.username = username;
@@ -50,6 +54,11 @@ public class NacosClientManager {
 
   @PostConstruct
   void init() {
+    if (!nacosEnabled) {
+      log.info("Nacos DISABLED (nacos.config.enabled=false) — ClientManager will not connect");
+      this.initialized = false;
+      return;
+    }
     try {
       Properties props = new Properties();
       props.put("serverAddr", serverAddr);

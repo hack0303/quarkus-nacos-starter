@@ -23,11 +23,14 @@ public class NacosHealthCheck implements HealthCheck {
 
   private static final Logger log = LoggerFactory.getLogger(NacosHealthCheck.class);
 
+  private final boolean nacosEnabled;
   private final NacosClientManager clientManager;
   private final String serviceName;
   private final String serviceGroup;
 
   public NacosHealthCheck(
+      @ConfigProperty(name = "nacos.config.enabled", defaultValue = "true")
+          boolean nacosEnabled,
       NacosClientManager clientManager,
       @ConfigProperty(
               name = "nacos.discovery.service-name",
@@ -37,6 +40,7 @@ public class NacosHealthCheck implements HealthCheck {
               name = "nacos.discovery.service-group",
               defaultValue = "DEFAULT_GROUP")
           String serviceGroup) {
+    this.nacosEnabled = nacosEnabled;
     this.clientManager = clientManager;
     this.serviceName = serviceName;
     this.serviceGroup = serviceGroup;
@@ -44,6 +48,13 @@ public class NacosHealthCheck implements HealthCheck {
 
   @Override
   public HealthCheckResponse call() {
+    if (!nacosEnabled) {
+      return HealthCheckResponse.named("Nacos Service Registration & Discovery")
+          .withData("status", "disabled")
+          .withData("reason", "nacos.config.enabled=false")
+          .up()
+          .build();
+    }
     try {
       var instances =
           clientManager.getNamingService().selectInstances(serviceName, serviceGroup, true);

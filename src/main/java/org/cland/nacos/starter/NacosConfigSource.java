@@ -48,12 +48,23 @@ public class NacosConfigSource implements ConfigSource, ConfigSourceFactory {
     this.properties = new NacosConfigProperties();
   }
 
+  /**
+   * Package-private constructor for testing — allows injecting custom properties.
+   */
+  NacosConfigSource(final NacosConfigProperties properties) {
+    this.properties = properties;
+  }
+
   // ========================================================================
   // ConfigSourceFactory
   // ========================================================================
 
   @Override
   public Iterable<ConfigSource> getConfigSources(final ConfigSourceContext context) {
+    if (!properties.enabled()) {
+      log.info("Nacos config source DISABLED — NACOS_ENABLED=false, skipping remote config fetch");
+      return Collections.emptyList();
+    }
     return Collections.singletonList(this);
   }
 

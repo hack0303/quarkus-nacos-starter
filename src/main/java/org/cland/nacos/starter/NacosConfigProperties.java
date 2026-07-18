@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
  *     <tr><th>环境变量</th><th>属性键</th><th>默认值</th></tr>
  *   </thead>
  *   <tbody>
+ *     <tr><td>{@code NACOS_ENABLED}</td><td>{@code nacos.config.enabled}</td><td>true</td></tr>
  *     <tr><td>{@code NACOS_SERVERADDR}</td><td>{@code nacos.config.server-addr}</td><td>192.168.1.11:8848</td></tr>
  *     <tr><td>{@code NACOS_NAMESPACE}</td><td>{@code nacos.config.namespace}</td><td>f00bead4-...</td></tr>
  *     <tr><td>{@code NACOS_DATAID}</td><td>{@code nacos.config.data-id}</td><td>{app-name}</td></tr>
@@ -34,6 +35,7 @@ public class NacosConfigProperties {
 
   private static final String DEFAULT_DATA_ID = "cland-app";
 
+  private final boolean enabled;
   private final String serverAddr;
   private final String namespace;
   private final String dataId;
@@ -43,6 +45,7 @@ public class NacosConfigProperties {
   private final long timeoutMs;
 
   public NacosConfigProperties() {
+    this.enabled = Boolean.parseBoolean(env("NACOS_ENABLED", "true"));
     this.serverAddr = env("NACOS_SERVERADDR", "192.168.1.11:8848");
     this.namespace = env("NACOS_NAMESPACE", "f00bead4-47a4-491a-a5e2-66d79f82d8a4");
     this.dataId = resolveDataId();
@@ -51,12 +54,13 @@ public class NacosConfigProperties {
     this.password = env("NACOS_PASSWORD", "chainpay123");
     this.timeoutMs = Long.parseLong(env("NACOS_TIMEOUT_MS", "5000"));
     log.info(
-        "NacosConfigProperties: serverAddr={}, namespace={}, dataId={}, group={}",
-        serverAddr, namespace, dataId, group);
+        "NacosConfigProperties: enabled={}, serverAddr={}, namespace={}, dataId={}, group={}",
+        enabled, serverAddr, namespace, dataId, group);
   }
 
   // ---- Accessors ----
 
+  public boolean enabled() { return enabled; }
   public String serverAddr() { return serverAddr; }
   public String namespace() { return namespace; }
   public String dataId() { return dataId; }
